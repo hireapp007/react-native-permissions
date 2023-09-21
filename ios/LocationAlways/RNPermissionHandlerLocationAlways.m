@@ -14,54 +14,58 @@
 @implementation RNPermissionHandlerLocationAlways
 
 + (NSArray<NSString *> * _Nonnull)usageDescriptionKeys {
-  return @[@"NSLocationAlwaysAndWhenInUseUsageDescription"];
+    return @[@"NSLocationAlwaysAndWhenInUseUsageDescription"];
 }
 
 + (NSString * _Nonnull)handlerUniqueId {
-  return @"ios.permission.LOCATION_ALWAYS";
+    return @"ios.permission.LOCATION_ALWAYS";
 }
 
 - (void)checkWithResolver:(void (^ _Nonnull)(RNPermissionStatus))resolve
                  rejecter:(void (__unused ^ _Nonnull)(NSError * _Nonnull))reject {
-  if (![CLLocationManager locationServicesEnabled]) {
-    return resolve(RNPermissionStatusNotAvailable);
-  }
-
-  switch ([CLLocationManager authorizationStatus]) {
-    case kCLAuthorizationStatusNotDetermined:
-      return resolve(RNPermissionStatusNotDetermined);
-    case kCLAuthorizationStatusRestricted:
-      return resolve(RNPermissionStatusRestricted);
-    case kCLAuthorizationStatusAuthorizedWhenInUse:
-    case kCLAuthorizationStatusDenied:
-      return resolve(RNPermissionStatusDenied);
-    case kCLAuthorizationStatusAuthorizedAlways:
-      return resolve(RNPermissionStatusAuthorized);
-  }
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        if (![CLLocationManager locationServicesEnabled]) {
+            return resolve(RNPermissionStatusNotAvailable);
+        }
+    });
+    
+    switch ([CLLocationManager authorizationStatus]) {
+        case kCLAuthorizationStatusNotDetermined:
+            return resolve(RNPermissionStatusNotDetermined);
+        case kCLAuthorizationStatusRestricted:
+            return resolve(RNPermissionStatusRestricted);
+        case kCLAuthorizationStatusAuthorizedWhenInUse:
+        case kCLAuthorizationStatusDenied:
+            return resolve(RNPermissionStatusDenied);
+        case kCLAuthorizationStatusAuthorizedAlways:
+            return resolve(RNPermissionStatusAuthorized);
+    }
 }
 
 - (void)requestWithResolver:(void (^ _Nonnull)(RNPermissionStatus))resolve
                    rejecter:(void (^ _Nonnull)(NSError * _Nonnull))reject {
-  if (![CLLocationManager locationServicesEnabled]) {
-    return resolve(RNPermissionStatusNotAvailable);
-  }
-  if ([CLLocationManager authorizationStatus] != kCLAuthorizationStatusNotDetermined) {
-    return [self checkWithResolver:resolve rejecter:reject];
-  }
-
-  _resolve = resolve;
-  _reject = reject;
-
-  _locationManager = [CLLocationManager new];
-  [_locationManager setDelegate:self];
-  [_locationManager requestAlwaysAuthorization];
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        if (![CLLocationManager locationServicesEnabled]) {
+            return resolve(RNPermissionStatusNotAvailable);
+        }
+    });
+    if ([CLLocationManager authorizationStatus] == kCLAuthorizationStatusAuthorizedAlways) {
+        return [self checkWithResolver:resolve rejecter:reject];
+    }
+    
+    _resolve = resolve;
+    _reject = reject;
+    
+    _locationManager = [CLLocationManager new];
+    [_locationManager setDelegate:self];
+    [_locationManager requestAlwaysAuthorization];
 }
 
 - (void)locationManager:(CLLocationManager *)manager didChangeAuthorizationStatus:(CLAuthorizationStatus)status {
-  if (status != kCLAuthorizationStatusNotDetermined) {
-    [_locationManager setDelegate:nil];
-    [self checkWithResolver:_resolve rejecter:_reject];
-  }
+    if (status != kCLAuthorizationStatusNotDetermined) {
+        [_locationManager setDelegate:nil];
+        [self checkWithResolver:_resolve rejecter:_reject];
+    }
 }
 
 @end
